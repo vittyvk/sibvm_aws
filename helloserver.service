@@ -1,0 +1,12 @@
+[Unit]
+Description=Hello Server
+Wants=network.target network-online.target
+After=network.target network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /run/helloserver.py 0.0.0.0 8080
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
