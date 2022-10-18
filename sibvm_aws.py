@@ -65,6 +65,7 @@ if __name__ == '__main__':
     nic1_mac = get_metadata("network/interfaces/macs/")
     nic1_subnet = get_metadata("network/interfaces/macs/%s/subnet-id" % nic1_mac)
     private_ip = get_metadata("local-ipv4")
+    main_instance_id = get_metadata("instance-id")
 
     # Debug: create a user
     # "users": [{"name":"test",
@@ -107,7 +108,10 @@ if __name__ == '__main__':
                                      InstanceType=ENCLAVE_SIZE,
                                      KeyName=public_key,
                                      SubnetId=nic1_subnet,
-                                     UserData=cloud_config)
+                                     UserData=cloud_config,
+                                     TagSpecifications=[{'ResourceType': 'instance',
+                                                         'Tags': [{"Key": "MainVM", "Value": main_instance_id}]}]
+                                     )
 
     sib_ip = instances[0].private_ip_address
     print("Sibling VM created: %s" % sib_ip)
