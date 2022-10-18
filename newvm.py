@@ -9,11 +9,13 @@ import getopt
 import aws
 
 def usage(retcode):
-    print("%s [-h] <instance-type>" % sys.argv[0])
+    print("%s [-e] [-h] <instance-type>" % sys.argv[0])
     sys.exit(retcode)
 
 if __name__ == '__main__':
     ec2 = aws.get_ec2()
+
+    enclave = False
 
     ssh_keyfile = "%s/.ssh/id_rsa" % os.environ['HOME']
 
@@ -42,13 +44,15 @@ if __name__ == '__main__':
         sys.exit(1)
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "h", ["help"])
+        opts, args = getopt.getopt(sys.argv[1:], "he", ["help", "enclave"])
     except getopt.GetoptError:
         usage(2)
 
     for opt, arg in opts:
-        if opt == 'h':
+        if opt in ('-h', '--help'):
             usage(0)
+        if opt in ('-e', '--enclave'):
+            enclave = True
 
     if args == []:
         usage(2)
@@ -65,36 +69,37 @@ if __name__ == '__main__':
     private_ip = aws.get_metadata("local-ipv4")
     main_instance_id = aws.get_metadata("instance-id")
 
-    # Debug: create a user
-    # "users": [{"name":"test",
-    #                              "ssh-authorized-keys": [ssh_pubkey],
-    #                              "groups": "wheel",
-    #                              "sudo": "ALL=(ALL) NOPASSWD:ALL"
-    #                              }
-    #                             ],
-    # Don't forget to unmask SSH port in iptables!
-
-    cloud_config_data={"packages": ["iptables", "python3"],
-                       "write_files": [{"encoding": "b64",
-                                        "owner": "root:root",
-                                        "permissions": "0755",
-                                        "path": "/run/helloserver.py",
-                                        "content": base64.b64encode(hello_py)
-                                        },
-                                       {"encoding": "b64",
-                                        "owner": "root:root",
-                                        "permissions": "0644",
-                                        "path": "/etc/systemd/system/helloserver.service",
-                                        "content": base64.b64encode(hello_service)
+    if enclave:
+        cloud_config_data = {"packages": ["iptables", "python3"],
+                             "write_files": [{"encoding": "b64",
+                                              "owner": "root:root",
+                                              "permissions": "0755",
+                                              "path": "/run/helloserver.py",
+                                              "content": base64.b64encode(hello_py)
+                                              },
+                                             {"encoding": "b64",
+                                              "owner": "root:root",
+                                              "permissions": "0644",
+                                              "path": "/etc/systemd/system/helloserver.service",
+                                              "content": base64.b64encode(hello_service)
+                                              }
+                                             ],
+                             "runcmd": ["iptables -A INPUT ! -s %s -j DROP" % private_ip,
+                                        "iptables -A INPUT -p tcp --destination-port 8080 -j ACCEPT",
+                                        "iptables -I INPUT -p tcp -j DROP"
+                                        "systemctl daemon-reload",
+                                        "systemctl start helloserver"
+                                        ]
+                             }
+    else:
+        cloud_config_data = {"users": [{"name": "ec2-user",
+                                        "ssh-authorized-keys": [ssh_pubkey],
+                                        "groups": "wheel",
+                                        "sudo": "ALL=(ALL) NOPASSWD:ALL"
                                         }
-                                       ],
-                       "runcmd": ["iptables -A INPUT ! -s %s -j DROP" % private_ip,
-                                  "iptables -A INPUT -p tcp --destination-port 8080 -j ACCEPT",
-                                  "iptables -I INPUT -p tcp -j DROP"
-                                  "systemctl daemon-reload",
-                                  "systemctl start helloserver"
-                                  ]
-                       }
+                                       ]
+                             }
+
     cloud_config =  "#cloud-config" + "\n" + yaml.dump(cloud_config_data)
 
     instances = ec2.create_instances(ImageId=ami,
