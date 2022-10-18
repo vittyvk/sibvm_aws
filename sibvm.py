@@ -1,5 +1,4 @@
 import subprocess
-import boto3
 import os
 import sys
 import yaml
@@ -12,15 +11,7 @@ def usage(retcode):
     sys.exit(retcode)
 
 if __name__ == '__main__':
-    if not "AWS_ACCESS_KEY" in os.environ:
-        print("Please set AWS_ACCESS_KEY environment variable)", file=sys.stderr)
-        sys.exit(1)
-    if not "AWS_SECRET_KEY" in os.environ:
-        print("Please set AWS_SECRET_KEY environment variable)", file=sys.stderr)
-        sys.exit(1)
-
-    access_key = os.environ["AWS_ACCESS_KEY"]
-    secret_key = os.environ["AWS_SECRET_KEY"]
+    ec2 = aws.get_ec2()
 
     ssh_keyfile = "%s/.ssh/id_rsa" % os.environ['HOME']
 
@@ -62,7 +53,6 @@ if __name__ == '__main__':
 
     instance_size = args[0]
 
-    region = aws.get_metadata("placement/region")
     availability_zone = aws.get_metadata("placement/availability-zone")
     instance_id = aws.get_metadata("instance-id")
     security_group = aws.get_metadata("security-groups")
@@ -104,8 +94,6 @@ if __name__ == '__main__':
                                   ]
                        }
     cloud_config =  "#cloud-config" + "\n" + yaml.dump(cloud_config_data)
-
-    ec2 = boto3.resource("ec2", region_name=region, aws_access_key_id=access_key, aws_secret_access_key=secret_key)
 
     instances = ec2.create_instances(ImageId=ami,
                                      Placement={'AvailabilityZone': availability_zone},
