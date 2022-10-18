@@ -1,23 +1,15 @@
 import subprocess
-import requests
 import boto3
 import os
 import sys
 import yaml
 import base64
+import getopt
+import aws
 
-ENCLAVE_SIZE="t3.micro"
-
-def get_metadata(path):
-    try:
-        r = requests.get("http://169.254.169.254/latest/meta-data/%s" % path, timeout=2)
-        if r.status_code != 200:
-            print("Failed to get %s metadata!" % path, file=sys.stderr)
-            sys.exit(1)
-    except:
-            print("Failed to get %s metadata!" % path, file=sys.stderr)
-            sys.exit(1)
-    return r.text
+def usage(retcode):
+    print("%s [-h] <instance-type>" % sys.argv[0])
+    sys.exit(retcode)
 
 if __name__ == '__main__':
     if not "AWS_ACCESS_KEY" in os.environ:
@@ -56,16 +48,30 @@ if __name__ == '__main__':
         print("Failed to read helloserver.service")
         sys.exit(1)
 
-    region = get_metadata("placement/region")
-    availability_zone=get_metadata("placement/availability-zone")
-    instance_id = get_metadata("instance-id")
-    security_group = get_metadata("security-groups")
-    public_key = get_metadata("public-keys").split("=")[1]
-    ami = get_metadata("ami-id")
-    nic1_mac = get_metadata("network/interfaces/macs/")
-    nic1_subnet = get_metadata("network/interfaces/macs/%s/subnet-id" % nic1_mac)
-    private_ip = get_metadata("local-ipv4")
-    main_instance_id = get_metadata("instance-id")
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "h", ["help"])
+    except getopt.GetoptError:
+        usage(2)
+
+    for opt, arg in opts:
+        if opt == 'h':
+            usage(0)
+
+    if args == []:
+        usage(2)
+
+    instance_size = args[0]
+
+    region = aws.get_metadata("placement/region")
+    availability_zone = aws.get_metadata("placement/availability-zone")
+    instance_id = aws.get_metadata("instance-id")
+    security_group = aws.get_metadata("security-groups")
+    public_key = aws.get_metadata("public-keys").split("=")[1]
+    ami = aws.get_metadata("ami-id")
+    nic1_mac = aws.get_metadata("network/interfaces/macs/")
+    nic1_subnet = aws.get_metadata("network/interfaces/macs/%s/subnet-id" % nic1_mac)
+    private_ip = aws.get_metadata("local-ipv4")
+    main_instance_id = aws.get_metadata("instance-id")
 
     # Debug: create a user
     # "users": [{"name":"test",
@@ -105,7 +111,7 @@ if __name__ == '__main__':
                                      Placement={'AvailabilityZone': availability_zone},
                                      MinCount=1,
                                      MaxCount=1,
-                                     InstanceType=ENCLAVE_SIZE,
+                                     InstanceType=instance_size,
                                      KeyName=public_key,
                                      SubnetId=nic1_subnet,
                                      UserData=cloud_config,

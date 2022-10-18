@@ -17,7 +17,7 @@ port 8080.
 - cd sibvm_aws
 - export AWS_ACCESS_KEY=xxxx
 - export AWS_SECRET_KEY=yyyy
-- python3 ./sibvm_aws.py
+- python3 ./sibvm.py t3.small
 
 You are suposed to see:
 
