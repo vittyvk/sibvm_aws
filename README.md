@@ -1,12 +1,14 @@
-# Create a sibling VM on AWS and make it an encalve
+# Create a sibling VM (on AWS)
 
 ## About
 
 This is a sample python script which is supposed to be launched from an AWS
 instance. It creates a 'sibling' instance in the same availability zone and
-the same network as the main VM, isolates the instance with iptables and launch
+the same network as the main VM. When creating an 'enclave' ('-e' option to
+'newvm.py)', the script isolates the instance with iptables and launches
 a sample echo server (borrowed from https://realpython.com/python-sockets/) on
-port 8080.
+port 8080. In non-enclave mode, ssh public key of the current user is added
+to 'ec2-user' in the remote VM to allow instant access.
 
 ## Usage
 
