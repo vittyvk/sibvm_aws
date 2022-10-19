@@ -9,13 +9,14 @@ import getopt
 import aws
 
 def usage(retcode):
-    print("%s [-e] [-h] <instance-type>" % sys.argv[0])
+    print("%s [-e] [-h] [-s <instance size>]" % sys.argv[0])
     sys.exit(retcode)
 
 if __name__ == '__main__':
     ec2 = aws.get_ec2()
 
     enclave = False
+    instance_size = ""
 
     ssh_keyfile = "%s/.ssh/id_rsa" % os.environ['HOME']
 
@@ -44,7 +45,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "he", ["help", "enclave"])
+        opts, args = getopt.getopt(sys.argv[1:], "ehs:", ["help", "enclave", "size="])
     except getopt.GetoptError:
         usage(2)
 
@@ -53,11 +54,8 @@ if __name__ == '__main__':
             usage(0)
         if opt in ('-e', '--enclave'):
             enclave = True
-
-    if args == []:
-        usage(2)
-
-    instance_size = args[0]
+        if opt in ('-s', '--size'):
+            instance_size = arg
 
     availability_zone = aws.get_metadata("placement/availability-zone")
     instance_id = aws.get_metadata("instance-id")
@@ -68,6 +66,8 @@ if __name__ == '__main__':
     nic1_subnet = aws.get_metadata("network/interfaces/macs/%s/subnet-id" % nic1_mac)
     private_ip = aws.get_metadata("local-ipv4")
     main_instance_id = aws.get_metadata("instance-id")
+    if instance_size == "":
+        instance_size= aws.get_metadata("instance-type")
 
     if enclave:
         cloud_config_data = {"packages": ["iptables", "python3"],

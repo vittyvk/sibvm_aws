@@ -22,7 +22,7 @@ port 8080.
 
 ### Creating a VM
 
-- ./newvm.py t3.small
+- ./newvm.py
 
 You are suposed to see:
 
@@ -36,7 +36,7 @@ $ ssh 10.1.111.51
 
 ### Creating an 'enclave' with an example 'echo' service
 
-- ./newvm.py -e t3.small
+- ./newvm.py -e
 
 You are suposed to see:
 
